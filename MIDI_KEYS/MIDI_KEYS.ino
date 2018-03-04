@@ -2,13 +2,14 @@
 
 // Declare Buttons
 const int buttons = 12;
-const int input[buttons] = {9, 8, 7, 6, 5, 4, A2, 16, 14, 15, A0, A1};
+const int input[buttons] = {9, 8, 7, 6, 5, 4, A2, A1, A0, 15, 14, 16};
+
 int buttonCurrentState[buttons] = {0};
 int buttonPrevState[buttons] = {0};
 
 // Debounce
 unsigned long lastDebounceTime[buttons] = {0};
-unsigned long debounceTime = 5;
+unsigned long debounceTime = 250;
 
 // MIDI Settings
 int noteMin = 0;
@@ -22,9 +23,11 @@ byte note = 60;
 void setup()
 {
   Serial.begin(115200);
+  pinMode(0, INPUT_PULLUP);
   pinMode(2, INPUT_PULLUP);
   pinMode(3, INPUT_PULLUP);
   pinMode(10, OUTPUT);
+  attachInterrupt(digitalPinToInterrupt(0), cut, LOW);
   attachInterrupt(digitalPinToInterrupt(3), octaveDown, LOW);
   attachInterrupt(digitalPinToInterrupt(2), octaveUp, LOW);
   for (size_t i = 0; i < buttons; i++)
@@ -42,7 +45,7 @@ void loop()
 }
 
 // Keyboard
-void keys()
+int keys()
 {
   for (size_t i = 0; i < buttons; i++)
   {
@@ -56,15 +59,36 @@ void keys()
         {
           noteOn(ch, note + i, 100);
           MidiUSB.flush();
+          return note + i;
         }
         else
         {
           noteOff(ch, note + i, 100);
           MidiUSB.flush();
+          return -1;
         }
         buttonPrevState[i] = buttonCurrentState[i];
       }
     }
+  }
+}
+
+//cut
+void cut()
+{
+  int note_val = keys();
+  if (note_val >= 0)
+  {
+    MidiUSB.flush();
+    noteOn(ch, note_val, 100);
+    MidiUSB.flush();
+  }
+
+  if (note_val == -1)
+  {
+    MidiUSB.flush();
+    noteOff(ch, note_val, 100);
+    MidiUSB.flush();
   }
 }
 // Light control
